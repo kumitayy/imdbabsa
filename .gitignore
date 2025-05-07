@@ -1,0 +1,36 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Data files (except raw data)
+core/data/*
+!core/data/raw/
+!core/data/whitelist.txt
+
+# Model files
+core/models/
+
+# Exploratory files
+core/exploratory/model_comparison.ipynb
+core/exploratory/model_comparison.py
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+
+# IDE settings
+.idea/
+.vscode/ 
