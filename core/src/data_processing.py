@@ -1,19 +1,23 @@
+# Standard library imports
 import os
 import sys
 import logging
 import re
+from typing import List, Optional
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
-
+# Third-party imports
 import nltk
 import pandas as pd
 import contractions
 from tqdm import tqdm
-from typing import List, Optional
 from nltk import pos_tag, word_tokenize
+
+# Local imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 # Load required resources
 nltk.download('wordnet', quiet=True)

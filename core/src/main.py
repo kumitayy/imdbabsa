@@ -208,9 +208,9 @@ def phase7() -> None:
 
     # Low number of samples for testing
     max_samples = {
-        "train": 12000, # Change to 10000 for full dataset
-        "val": 2000, # Change to 2000 for full dataset
-        "test": 2000 # Change to 2000 for full dataset
+        "train": 2000, # Change to 10000 for full dataset
+        "val": 200, # Change to 2000 for full dataset
+        "test": 200 # Change to 2000 for full dataset
     }
 
     generate_synthetic_data(max_samples_per_split=max_samples)
@@ -279,7 +279,7 @@ def phase9() -> None:
        - Implements specialized attention mechanisms for aspects
        - Utilizes gradient accumulation for efficient training
        - Applies label smoothing and early stopping
-    4. Saves the best model based on F1 score
+    4. Saves the best model based on F1 score directly in the models/lcf_atepc directory
     5. Prepares the model for deployment by saving tokenizer and inference components
     
     Returns:
@@ -291,13 +291,12 @@ def phase9() -> None:
         Exception: If there is an error training the model.
     """
     import pandas as pd
-    from train_model import prepare_data_format, ABSADataset, train_model, save_model_for_deployment
-    import shutil
+    from train_model import prepare_data_format, ABSADataset, train_model
     
     logger.info("Phase 9: Starting LCF-ATEPC training pipeline for ABSA...")
     
-    lcf_atepc_output_path = CONFIG.get("lcf_atepc_output_path", "outputs/lcf-atepc")
-    os.makedirs(lcf_atepc_output_path, exist_ok=True)
+    lcf_atepc_deployment_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "lcf_atepc")
+    os.makedirs(lcf_atepc_deployment_path, exist_ok=True)
     
     # Format our balanced data for LCF-ATEPC
     for split in ['train', 'val', 'test']:
@@ -327,43 +326,11 @@ def phase9() -> None:
     try:
         model_path = train_model(train_dataset, val_dataset)
         logger.info(f"Model trained successfully and saved to {model_path}")
-        
-        # Save to deployment location (if not already the target location)
-        deployment_path = CONFIG.get("lcf_atepc_deployment_path", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "lcf_atepc"))
-        
-        # Only copy if model_path is different from deployment_path
-        if os.path.abspath(model_path) != os.path.abspath(deployment_path):
-            if os.path.exists(deployment_path):
-                # Backup existing model if it exists
-                if os.path.isdir(deployment_path):
-                    backup_path = f"{deployment_path}_backup_{int(time.time())}"
-                    logger.info(f"Backing up existing model to {backup_path}")
-                    shutil.copytree(deployment_path, backup_path)
-                    shutil.rmtree(deployment_path)
-                
-            logger.info(f"Copying model to deployment location: {deployment_path}")
-            shutil.copytree(model_path, deployment_path)
-            
-            # Make a symlink to the latest model in the model directory
-            latest_link = os.path.join(os.path.dirname(deployment_path), "lcf_atepc_latest")
-            if os.path.exists(latest_link):
-                if os.path.islink(latest_link):
-                    os.unlink(latest_link)
-                else:
-                    shutil.rmtree(latest_link)
-                    
-            # Create relative symlink
-            try:
-                os.symlink(os.path.basename(deployment_path), latest_link, target_is_directory=True)
-                logger.info(f"Created symlink to latest model: {latest_link}")
-            except Exception as e:
-                logger.warning(f"Could not create symlink: {e}")
-                
     except Exception as e:
-        logger.error(f"Error during model training or deployment: {e}")
+        logger.error(f"Error during model training: {e}")
         raise
     
-    logger.info(f"Phase 9 complete: LCF-ATEPC model trained, saved and prepared for deployment")
+    logger.info(f"Phase 9 complete: LCF-ATEPC model trained, saved and prepared for deployment at {lcf_atepc_deployment_path}")
     return model_path
 
 
@@ -391,9 +358,9 @@ if __name__ == '__main__':
         3: phase3,    # Split dataset
         4: phase4,    # Process aspects
         # Phases 5 and 6 are omitted (deprecated or not implemented)
-        7: phase7,    # Generate synthetic sentiments
-        8: phase8,    # Balance classes
-        9: phase9     # Train LCF-ATEPC model
+        # 7: phase7,    # Generate synthetic sentiments
+        # 8: phase8,    # Balance classes
+        # 9: phase9     # Train LCF-ATEPC model
     }
     
     if args.phase:

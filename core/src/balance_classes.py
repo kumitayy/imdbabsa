@@ -1,9 +1,22 @@
-import pandas as pd
-import numpy as np
-from typing import Tuple, Optional
-import logging
+"""
+Balances the classes in the dataset.
+"""
 
+# Standard library imports
+import logging
+from typing import Tuple, Optional
+
+# Third-party imports
+import numpy as np
+import pandas as pd
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
 
 def filter_binary_classes(df: pd.DataFrame, sentiment_col: str = 'generated_sentiment') -> pd.DataFrame:
     """

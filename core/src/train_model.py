@@ -1047,8 +1047,9 @@ def train_model(train_dataset, val_dataset):
         logger.error(f"Error initializing model: {e}")
         raise
 
-    output_dir = CONFIG.get("lcf_atepc_output_path", "outputs/lcf-atepc")
-    os.makedirs(output_dir, exist_ok=True)
+    best_model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "lcf_atepc")
+    os.makedirs(best_model_path, exist_ok=True)
+    logger.info(f"Model will be saved directly to: {best_model_path}")
 
     # Optimized training parameters
     initial_batch_size = 16
@@ -1115,7 +1116,6 @@ def train_model(train_dataset, val_dataset):
         logger.info("Gradient checkpointing enabled")
 
     best_f1 = 0.0
-    best_model_path = os.path.join(output_dir, "best_model")
     early_stopping_counter = 0
     early_stopping_patience = 3
     
@@ -1194,8 +1194,6 @@ def train_model(train_dataset, val_dataset):
                 best_f1 = current_f1
                 early_stopping_counter = 0
                 
-                # Save best model
-                os.makedirs(best_model_path, exist_ok=True)
                 torch.save(model.state_dict(), os.path.join(best_model_path, "model.pt"))
                 
                 model_config = {
@@ -1218,6 +1216,16 @@ def train_model(train_dataset, val_dataset):
                 with open(os.path.join(best_model_path, "model_info.json"), "w") as f:
                     json.dump(model_info, f, indent=2)
                 
+                try:
+                    logger.info("Saving deployment files for the current best model...")
+                    save_model_for_deployment(
+                        best_model_path,
+                        tokenizer=BertTokenizer.from_pretrained("bert-base-uncased"),
+                        model_config=model_config
+                    )
+                except Exception as e:
+                    logger.error(f"Error saving deployment files: {e}")
+                
                 logger.info(f"New best model saved with F1: {best_f1:.4f}")
             else:
                 early_stopping_counter += 1
@@ -1227,23 +1235,7 @@ def train_model(train_dataset, val_dataset):
     
     except Exception as e:
         logger.error(f"Error during training: {e}")
-        if best_f1 > 0:
-            logger.info("Saving last successful model despite error...")
-            os.makedirs(best_model_path, exist_ok=True)
-            torch.save(model.state_dict(), os.path.join(best_model_path, "last_model.pt"))
         raise
-    
-    # Save additional deployment files for the best model
-    try:
-        logger.info("Preparing model for deployment...")
-        save_model_for_deployment(
-            best_model_path,
-            tokenizer=BertTokenizer.from_pretrained("bert-base-uncased"),
-            model_config=model_config
-        )
-    except Exception as e:
-        logger.error(f"Error saving deployment files: {e}")
-        logger.info("Training completed successfully but deployment files could not be saved.")
     
     return best_model_path
 

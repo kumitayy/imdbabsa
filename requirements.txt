@@ -1,5 +1,5 @@
 # Core libraries
-numpy>=1.24.0
+numpy==1.24.3
 pandas>=2.0.0
 matplotlib>=3.7.0
 scikit-learn>=1.2.0
@@ -8,15 +8,19 @@ tqdm>=4.65.0
 # Text processing
 nltk>=3.8.0
 spacy>=3.6.0
-transformers>=4.28.0
-sentencepiece>=0.1.99
+transformers==4.49.0
+sentencepiece==0.1.99; --only-binary=:all:
 sentence-transformers>=2.2.2
 datasets>=2.12.0
+contractions>=0.1.73
 
-# Deep learning
-torch>=2.0.0
-accelerate>=0.19.0
-bitsandbytes>=0.39.0
+# Deep learning with CUDA support
+--find-links https://download.pytorch.org/whl/cu118/torch_stable.html
+torch==2.6.0
+torchvision==0.21.0
+torchaudio==2.6.0
+accelerate==1.5.2
+bitsandbytes==0.45.5
 
 # Web & API
 flask>=2.3.0
@@ -34,5 +38,5 @@ requests>=2.31.0
 pyyaml>=6.0.1
 python-dotenv>=1.0.0
 
-# Для SpaCy
+# For SpaCy
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl 

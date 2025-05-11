@@ -5,30 +5,27 @@ This module combines aspect extraction, context analysis, and whitelist filterin
 into a unified pipeline for preparing movie review data for ABSA tasks.
 """
 
+# Standard library imports
 import os
 import sys
 import logging
 import re
-from collections import Counter
-from typing import List, Set, Optional, Dict, Tuple, Any
-from ast import literal_eval
-import multiprocessing
-from functools import partial
 import time
+import multiprocessing
+from collections import Counter
+from functools import partial
+from typing import List, Set, Optional
 
-import tqdm as tqdm_module
-tqdm_module.tqdm = lambda *args, **kwargs: args[0]
-
-import nltk
+# Third-party imports
 import torch
 import pandas as pd
 import numpy as np
-from nltk.corpus import wordnet
-from sentence_transformers import SentenceTransformer
 import spacy
+import transformers
+from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
 
 # Disable progress bars in libraries
-import transformers
 transformers.logging.set_verbosity_error()
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -61,7 +58,6 @@ bert_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Reduce SpaCy model size for speed - we only need sentence segmentation
 nlp = spacy.load("en_core_web_sm", disable=["ner", "tagger", "lemmatizer", "attribute_ruler"])
 
-# Добавить после импортов и настройки логирования
 original_stderr = sys.stderr
 
 class DummyFile:
@@ -189,14 +185,17 @@ def normalize_aspects(aspect_lists: List[List[str]], similarity_threshold: float
     }
     cluster_keys = list(aspect_synonyms.keys())
     device = "cuda" if use_gpu and CUDA_AVAILABLE else "cpu"
+    logger.info(f"Computing cluster embeddings using {device}")
     cluster_embeddings = bert_model.encode(cluster_keys, convert_to_numpy=True, device=device)
     
     all_aspects = list(set(a for aspects in aspect_lists for a in aspects))
+    logger.info(f"Found {len(all_aspects)} unique aspects to normalize")
     
     batch_size = 512 if CUDA_AVAILABLE else 128
     aspect_embeddings = []
     
-    for i in range(0, len(all_aspects), batch_size):
+    logger.info("Computing aspect embeddings")
+    for i in tqdm(range(0, len(all_aspects), batch_size), desc="Computing aspect embeddings"):
         batch = all_aspects[i:i+batch_size]
         batch_embeddings = bert_model.encode(
             batch, 
@@ -208,13 +207,15 @@ def normalize_aspects(aspect_lists: List[List[str]], similarity_threshold: float
     
     aspect_embeddings = np.vstack(aspect_embeddings)
     
+    logger.info("Computing aspect similarities")
     similarities = np.dot(aspect_embeddings, cluster_embeddings.T) / (
         np.linalg.norm(aspect_embeddings, axis=1, keepdims=True) @ 
         np.linalg.norm(cluster_embeddings, axis=1, keepdims=True).T
     )
     
+    logger.info("Mapping aspects to clusters")
     aspect_to_cluster = {}
-    for i, aspect in enumerate(all_aspects):
+    for i, aspect in enumerate(tqdm(all_aspects, desc="Mapping aspects to clusters")):
         max_sim_idx = int(np.argmax(similarities[i]))
         if similarities[i, max_sim_idx] >= similarity_threshold:
             aspect_to_cluster[aspect] = cluster_keys[max_sim_idx]
@@ -222,6 +223,7 @@ def normalize_aspects(aspect_lists: List[List[str]], similarity_threshold: float
             aspect_to_cluster[aspect] = aspect
     
     normalized_lists = [[aspect_to_cluster[a] for a in aspects] for aspects in aspect_lists]
+    logger.info("Aspect normalization completed")
     return normalized_lists
 
 
@@ -242,13 +244,15 @@ def merge_similar_aspects(aspect_lists: List[List[str]], similarity_threshold: f
         RuntimeError: If GPU is requested but not available
     """
     all_aspects = list(set(a for aspects in aspect_lists for a in aspects))
+    logger.info(f"Found {len(all_aspects)} unique aspects to merge")
     
     device = "cuda" if use_gpu and CUDA_AVAILABLE else "cpu"
+    logger.info(f"Computing embeddings using {device}")
     
     batch_size = 512 if CUDA_AVAILABLE else 128
     embeddings = []
     
-    for i in range(0, len(all_aspects), batch_size):
+    for i in tqdm(range(0, len(all_aspects), batch_size), desc="Computing embeddings for merging"):
         batch = all_aspects[i:i+batch_size]
         batch_embeddings = bert_model.encode(
             batch,
@@ -265,13 +269,15 @@ def merge_similar_aspects(aspect_lists: List[List[str]], similarity_threshold: f
     
     aspect_to_vec = dict(zip(all_aspects, embeddings))
     
+    logger.info("Computing similarity matrix")
     similarity_matrix = np.dot(embeddings, embeddings.T) / (
         np.linalg.norm(embeddings, axis=1, keepdims=True) @ 
         np.linalg.norm(embeddings, axis=1, keepdims=True).T
     )
     
+    logger.info("Merging similar aspects")
     merged_map = {}
-    for i, a1 in enumerate(all_aspects):
+    for i, a1 in enumerate(tqdm(all_aspects, desc="Finding similar aspects")):
         if a1 in merged_map:
             continue
         merged_map[a1] = a1
@@ -284,6 +290,7 @@ def merge_similar_aspects(aspect_lists: List[List[str]], similarity_threshold: f
                     merged_map[a2] = a1
     
     merged_lists = [[merged_map[a] for a in aspects if a in merged_map] for aspects in aspect_lists]
+    logger.info("Aspect merging completed")
     return merged_lists
 
 
@@ -312,13 +319,17 @@ def extract_aspect_contexts_batch(reviews, all_aspects, use_gpu=True):
     contrasts_batch = []
     
     device = "cuda" if use_gpu and CUDA_AVAILABLE else "cpu"
+    logger.info(f"Extracting aspect contexts using {device}")
+    
     contrast_indicators = [
         "but", "however", "although", "though", "despite", "in spite", "except",
         "while", "nevertheless", "on the other hand", "unfortunately", "still",
         "otherwise", "that said", "yet", "even though", "other than that"
     ]
     
-    for text, aspects in zip(reviews, all_aspects):
+    for idx, (text, aspects) in enumerate(tqdm(zip(reviews, all_aspects), 
+                                          desc="Processing reviews", 
+                                          total=len(reviews))):
         if not aspects:
             contexts_batch.append({})
             contrasts_batch.append({})
@@ -400,10 +411,25 @@ def extract_aspect_contexts_batch(reviews, all_aspects, use_gpu=True):
         contexts_batch.append(aspect_contexts)
         contrasts_batch.append(aspect_contrasts)
     
+    logger.info("Context extraction completed")
     return contexts_batch, contrasts_batch
 
 
 def process_aspects(df: pd.DataFrame, aspect_column: str = "aspects", use_gpu: bool = True) -> pd.DataFrame:
+    """
+    Process aspects in the dataset through a series of filters and transformations.
+    
+    Args:
+        df (pd.DataFrame): DataFrame containing the data
+        aspect_column (str): Name of the column containing aspect lists
+        use_gpu (bool): Whether to use GPU for embedding calculations
+        
+    Returns:
+        pd.DataFrame: DataFrame with processed aspects
+        
+    Raises:
+        Exception: If there is an error during processing
+    """
     logger.info("Processing aspects: started")
     df = df.copy(deep=True)
     df[aspect_column] = df[aspect_column].apply(eval)
@@ -415,14 +441,11 @@ def process_aspects(df: pd.DataFrame, aspect_column: str = "aspects", use_gpu: b
     df["semantic_filtered_aspects"] = filter_semantic_noise(df["filtered_aspects"])
     
     logger.info("Normalizing aspects")
-    with suppress_output():
-        df["normalized_aspects"] = normalize_aspects(df["semantic_filtered_aspects"], use_gpu=use_gpu)
+    df["normalized_aspects"] = normalize_aspects(df["semantic_filtered_aspects"], use_gpu=use_gpu)
     
     logger.info("Merging similar aspects")
-    with suppress_output():
-        df["final_aspects"] = merge_similar_aspects(df["normalized_aspects"], use_gpu=use_gpu)
+    df["final_aspects"] = merge_similar_aspects(df["normalized_aspects"], use_gpu=use_gpu)
     
-    # Удаление промежуточных столбцов и столбца score, если он есть
     columns_to_keep = ["review", "sentiment", "final_aspects"]
     df = df[[col for col in columns_to_keep if col in df.columns]]
     
@@ -565,27 +588,30 @@ def prepare_aspects_with_whitelist(input_path: str, output_path: str, whitelist_
         Exception: If there is an error during processing
     """
     try:
-        # Обработка аспектов
+        logger.info(f"Loading dataset from {input_path}")
         df = pd.read_csv(input_path)
+        logger.info(f"Loaded dataset with {len(df)} rows")
+        
         df = process_aspects(df, use_gpu=use_gpu)
         
-        # Фильтрация по белому списку
         whitelist = load_whitelist(whitelist_path)
+        logger.info(f"Filtering dataset by whitelist with {len(whitelist)} entries")
         df_filtered = filter_dataset_by_whitelist(df, whitelist)
-        
-        # Извлечение контекстов ТОЛЬКО для отфильтрованных аспектов
+        logger.info(f"After whitelist filtering: {len(df_filtered)} rows remaining")
+
         logger.info("Extracting aspect contexts for whitelisted aspects")
-        with suppress_output():
-            contexts_batch, contrasts_batch = extract_aspect_contexts_batch(
-                df_filtered["review"].tolist(), 
-                df_filtered["final_aspects"].tolist(), 
-                use_gpu=use_gpu
-            )
+        contexts_batch, contrasts_batch = extract_aspect_contexts_batch(
+            df_filtered["review"].tolist(), 
+            df_filtered["final_aspects"].tolist(), 
+            use_gpu=use_gpu
+        )
         
         df_filtered["aspect_contexts"] = contexts_batch
         df_filtered["aspect_contrasts"] = contrasts_batch
         
+        logger.info(f"Saving processed dataset to {output_path}")
         df_filtered.to_csv(output_path, index=False)
+        logger.info(f"Dataset successfully saved")
         
     except Exception as e:
         logger.error(f"Error processing {input_path}: {e}")
@@ -617,6 +643,18 @@ def process_split(split_name: str, use_gpu: bool = True) -> None:
 
 
 def run_aspect_preparation(use_gpu: bool = True) -> None:
+    """
+    Run the complete aspect preparation pipeline for all splits.
+    
+    Args:
+        use_gpu (bool): Whether to use GPU for embedding calculations
+
+    Returns:
+        None
+        
+    Raises:
+        Exception: If there is an error during processing
+    """
     os.makedirs(CONFIG["useful_aspects_path"], exist_ok=True)
     
     splits = ["train", "val", "test"]
