@@ -1,20 +1,9 @@
-"""
-Comprehensive aspect preparation module for ABSA (Aspect-Based Sentiment Analysis).
-
-This module combines aspect extraction, context analysis, and whitelist filtering
-into a unified pipeline for preparing movie review data for ABSA tasks.
-"""
-
 # Standard library imports
 import os
 import sys
 import logging
 import re
-import time
-import multiprocessing
-from collections import Counter
-from functools import partial
-from typing import List, Set, Optional
+from typing import List, Set, Optional, Counter
 
 # Third-party imports
 import torch
@@ -57,8 +46,6 @@ else:
 bert_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Reduce SpaCy model size for speed - we only need sentence segmentation
 nlp = spacy.load("en_core_web_sm", disable=["ner", "tagger", "lemmatizer", "attribute_ruler"])
-
-original_stderr = sys.stderr
 
 class DummyFile:
     def write(self, x): pass
@@ -266,8 +253,6 @@ def merge_similar_aspects(aspect_lists: List[List[str]], similarity_threshold: f
         embeddings = np.vstack(embeddings)
     else:
         embeddings = embeddings[0]
-    
-    aspect_to_vec = dict(zip(all_aspects, embeddings))
     
     logger.info("Computing similarity matrix")
     similarity_matrix = np.dot(embeddings, embeddings.T) / (

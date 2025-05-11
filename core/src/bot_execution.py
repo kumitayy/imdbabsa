@@ -1,16 +1,27 @@
+# Standard library imports
+import json
+import logging
 import os
 import sys
+from typing import Any, Dict, NoReturn, Tuple
+
+# Third-party imports
 import torch
 import torch.nn as nn
-import json
-from transformers import BertTokenizer, BertModel
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import logging
-from typing import Dict, Tuple, Any, NoReturn
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+from transformers import BertModel, BertTokenizer
 
+# Local imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -196,6 +207,7 @@ class LCF_ATEPC(nn.Module):
 
         return apc_logits
 
+
 class AspectSentimentAnalyzer:
     """
     Class for analyzing sentiment in text reviews for specific aspects using the LCF-ATEPC model.
@@ -264,6 +276,7 @@ class AspectSentimentAnalyzer:
             logger.error(f"Error initializing sentiment analyzer: {str(e)}")
             raise
         
+
     def analyze_sentiment(self, text: str, aspect: str) -> Tuple[str, float]:
         """
         Analyze sentiment for a given aspect in the provided text.
@@ -365,6 +378,7 @@ class AspectSentimentAnalyzer:
         except Exception as e:
             logger.error(f"Error during sentiment analysis: {str(e)}")
             raise
+
 
 class TelegramBot:
     """
@@ -516,9 +530,10 @@ class TelegramBot:
         logger.info("Starting Telegram bot polling...")
         application.run_polling()
 
+
 if __name__ == "__main__":
     # Replace with your actual bot token from BotFather
-    BOT_TOKEN = "7868193869:AAHNN4u15vkq-y2NHrYDBoylgWBS1l5w-4U"
+    BOT_TOKEN = "YOUR_BOT_TOKEN"
     
     if BOT_TOKEN == "YOUR_BOT_TOKEN":
         logger.warning("You are using a test token. Please replace 'YOUR_BOT_TOKEN' with an actual token from @BotFather.")
@@ -529,4 +544,4 @@ if __name__ == "__main__":
         bot.run()
     except Exception as e:
         logger.error(f"Critical error: {str(e)}")
-        sys.exit(1) 
+        sys.exit(1)

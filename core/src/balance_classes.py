@@ -1,7 +1,3 @@
-"""
-Balances the classes in the dataset.
-"""
-
 # Standard library imports
 import logging
 from typing import Tuple, Optional

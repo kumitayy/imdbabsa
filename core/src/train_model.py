@@ -1,41 +1,71 @@
-import os
-import sys
-import logging
+# Standard library imports
 import json
-import time
+import logging
 import math
-import warnings
+import os
 import random
+import sys
+import time
+import warnings
+from typing import List, Optional, Tuple
 
+# Third-party imports
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from tqdm.auto import tqdm
+import transformers
+from transformers import (
+    AdamW,
+    BertModel,
+    BertTokenizer,
+    EarlyStoppingCallback,
+    Trainer,
+    TrainerCallback,
+    TrainingArguments,
+    get_cosine_schedule_with_warmup,
+    logging as transformers_logging,
+)
+from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+
+# Local imports
+from config.config import CONFIG
+
+# Configure warnings and logging
 warnings.filterwarnings("ignore")
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pandas as pd
-from transformers import BertTokenizer, BertModel, Trainer, TrainingArguments, EarlyStoppingCallback, TrainerCallback
-from transformers import AdamW, get_linear_schedule_with_warmup, get_cosine_schedule_with_warmup
-from transformers import logging as transformers_logging
-from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from config.config import CONFIG
-from tqdm.auto import tqdm
-
+# Configure transformers logging
 transformers_logging.set_verbosity_error()
 transformers_logging.disable_progress_bar()
 
+# Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {device}")
 
 # ----- Model Definition -----
 class LCF_ATEPC(nn.Module):
-    def __init__(self, pretrained_model_name='bert-base-uncased',
-                 hidden_size=768, num_aspect_labels=2, num_sentiment_labels=2,
-                 context_window=3, dropout_rate=0.15):
+    """
+    LCF_ATEPC model implementation for aspect-based sentiment analysis.
+    """
+    def __init__(self, pretrained_model_name: str = 'bert-base-uncased',
+                 hidden_size: int = 768, num_aspect_labels: int = 2, num_sentiment_labels: int = 2,
+                 context_window: int = 3, dropout_rate: float = 0.15):
+        """
+        Initialize the LCF_ATEPC model.
+
+        Args:
+            pretrained_model_name (str): Name of the pretrained BERT model to use.
+            hidden_size (int): Hidden size of the BERT model.
+            num_aspect_labels (int): Number of aspect labels.
+            num_sentiment_labels (int): Number of sentiment labels.
+            context_window (int): Context window size for aspect-based context modeling.
+            dropout_rate (float): Dropout rate for the model.
+        """
         super(LCF_ATEPC, self).__init__()
         from transformers import BertModel
         self.bert = BertModel.from_pretrained(pretrained_model_name)
@@ -79,7 +109,17 @@ class LCF_ATEPC(nn.Module):
             nn.Linear(hidden_size // 2, num_sentiment_labels)
         )
 
-    def forward(self, input_ids, attention_mask, token_type_ids=None, aspect_positions=None):
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, token_type_ids: Optional[torch.Tensor] = None, 
+                aspect_positions: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Forward pass for the LCF_ATEPC model.
+
+        Args:
+            input_ids (torch.Tensor): Input IDs for the BERT model.
+            attention_mask (torch.Tensor): Attention mask for the BERT model.
+            token_type_ids (torch.Tensor, optional): Token type IDs for the BERT model.
+            aspect_positions (torch.Tensor, optional): Aspect positions for the BERT model.
+        """
         outputs = self.bert(input_ids, attention_mask=attention_mask,
                             token_type_ids=token_type_ids,
                             output_hidden_states=True)
@@ -178,7 +218,13 @@ class LCF_ATEPC(nn.Module):
 
         return ate_logits, apc_logits
 
-    def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
+    def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs: Optional[dict] = None) -> None:
+        """
+        Enables gradient checkpointing for the BERT model.
+
+        Args:
+            gradient_checkpointing_kwargs (dict, optional): Additional keyword arguments for gradient checkpointing.
+        """
         if hasattr(self.bert, "gradient_checkpointing_enable"):
             self.bert.gradient_checkpointing_enable(gradient_checkpointing_kwargs=gradient_checkpointing_kwargs)
         else:
@@ -188,7 +234,10 @@ class LCF_ATEPC(nn.Module):
                 self.bert.config.use_cache = False
             self.bert.gradient_checkpointing = True
 
-    def gradient_checkpointing_disable(self):
+    def gradient_checkpointing_disable(self) -> None:
+        """
+        Disables gradient checkpointing for the BERT model.
+        """
         if hasattr(self.bert, "gradient_checkpointing_disable"):
             self.bert.gradient_checkpointing_disable()
         else:
@@ -196,7 +245,7 @@ class LCF_ATEPC(nn.Module):
                 self.bert.config.use_cache = True
             self.bert.gradient_checkpointing = False
             
-    def freeze_bert_layers(self, num_layers_to_freeze=None):
+    def freeze_bert_layers(self, num_layers_to_freeze: Optional[int] = None) -> None:
         """
         Freeze BERT layers for transfer learning
         
@@ -227,7 +276,20 @@ class LCF_ATEPC(nn.Module):
 
 # ----- Dataset & Preprocessing -----
 class ABSADataset(torch.utils.data.Dataset):
-    def __init__(self, dataframe, tokenizer_name="bert-base-uncased", max_length=128, inference=False, augment=False):
+    """
+    Dataset class for aspect-based sentiment analysis.
+    """
+    def __init__(self, dataframe: pd.DataFrame, tokenizer_name: str = "bert-base-uncased", max_length: int = 128, inference: bool = False, augment: bool = False):
+        """
+        Initialize the ABSADataset.
+
+        Args:
+            dataframe (pd.DataFrame): DataFrame containing the dataset.
+            tokenizer_name (str): Name of the tokenizer to use.
+            max_length (int): Maximum sequence length.
+            inference (bool): Whether the dataset is for inference.
+            augment (bool): Whether to augment the dataset.
+        """
         self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
         self.max_length = max_length
         self.inference = inference
@@ -278,11 +340,16 @@ class ABSADataset(torch.utils.data.Dataset):
                                   'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 
                                   't', 'can', 'will', 'just', 'don', 'should', 'now'])
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Get the length of the dataset.
+        """
         return len(self.data)
     
-    def _augment_text(self, text, aspect):
-        """Simple data augmentation techniques"""
+    def _augment_text(self, text, aspect) -> str:
+        """
+        Simple data augmentation techniques.
+        """
         
         # Don't augment very short texts
         if len(text.split()) < 10:
@@ -320,7 +387,10 @@ class ABSADataset(torch.utils.data.Dataset):
             
         return text
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict:
+        """
+        Get an item from the dataset.
+        """
         try:
             row = self.data.iloc[idx]
             text = str(row["review"])
@@ -427,7 +497,13 @@ class ABSADataset(torch.utils.data.Dataset):
 
 # Dynamic batch size scheduler
 class BatchSizeScheduler:
-    def __init__(self, initial_batch_size, max_batch_size, factor=1.25, epochs_to_increase=2):
+    """
+    Dynamic batch size scheduler.
+    """ 
+    def __init__(self, initial_batch_size: int, max_batch_size: int, factor: float = 1.25, epochs_to_increase: int = 2):
+        """
+        Initialize the batch size scheduler.
+        """
         self.initial_batch_size = initial_batch_size
         self.max_batch_size = max_batch_size
         self.factor = factor  # How much to increase each time
@@ -435,7 +511,7 @@ class BatchSizeScheduler:
         self.current_batch_size = initial_batch_size
         self.epoch = 0
         
-    def step(self):
+    def step(self) -> bool:
         """Call at the end of each epoch to potentially update batch size"""
         self.epoch += 1
         if self.epoch % self.epochs_to_increase == 0:
@@ -445,12 +521,16 @@ class BatchSizeScheduler:
                 return True  # Batch size changed
         return False  # No change
         
-    def get_batch_size(self):
+    def get_batch_size(self) -> int:
         """Get the current batch size"""
         return self.current_batch_size
 
 # ----- Training & Evaluation -----
-def train_epoch(model, dataloader, optimizer, scheduler, device, gradient_accumulation_steps=1, use_amp=True):
+def train_epoch(model: nn.Module, dataloader: torch.utils.data.DataLoader, optimizer: torch.optim.Optimizer, scheduler: torch.optim.lr_scheduler.LambdaLR, 
+                device: torch.device, gradient_accumulation_steps: int = 1, use_amp: bool = True) -> float:
+    """
+    Train the model for one epoch.
+    """
     model.train()
     total_loss = 0
     ate_loss_fn = FocalLoss(alpha=0.25, gamma=2.0, reduction='mean')
@@ -522,14 +602,23 @@ def train_epoch(model, dataloader, optimizer, scheduler, device, gradient_accumu
 
 # Focal Loss implementation for better handling of class imbalance
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+    """
+    Focal Loss implementation for better handling of class imbalance.
+    """
+    def __init__(self, alpha: float = 0.25, gamma: float = 2.0, reduction: str = 'mean'):
+        """
+        Initialize the Focal Loss.
+        """
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
         self.ce_loss_fn = nn.CrossEntropyLoss(reduction='none')
         
-    def forward(self, logits, targets):
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the Focal Loss.
+        """
         ce_loss = self.ce_loss_fn(logits, targets)
         pt = torch.exp(-ce_loss)
         focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
@@ -542,7 +631,10 @@ class FocalLoss(nn.Module):
             return focal_loss
 
 @torch.no_grad()
-def eval_epoch(model, dataloader, device, use_amp=True):
+def eval_epoch(model: nn.Module, dataloader: torch.utils.data.DataLoader, device: torch.device, use_amp: bool = True) -> dict:
+    """
+    Evaluate the model for one epoch.
+    """
     model.eval()
     total_loss = 0
     correct_ate = 0
@@ -622,7 +714,7 @@ def eval_epoch(model, dataloader, device, use_amp=True):
         'f1_score': f1_score
     }
 
-def custom_collate_fn(batch):
+def custom_collate_fn(batch: List[dict]) -> dict:
     """
     Custom function for batch collation.
     Ensures proper handling of aspect_positions.
@@ -640,7 +732,7 @@ def custom_collate_fn(batch):
             
     return batch_dict
 
-def save_model_for_deployment(model_path, tokenizer=None, model_config=None):
+def save_model_for_deployment(model_path: str, tokenizer: Optional[transformers.PreTrainedTokenizer] = None, model_config: Optional[dict] = None) -> None:
     """
     Save the model, tokenizer and configuration for deployment in production environments.
     
@@ -1019,16 +1111,17 @@ print(f"Confidence: {result['confidence']:.2f}")
         logger.error(f"Error preparing model for deployment: {e}")
         raise
 
-def train_model(train_dataset, val_dataset):
+def train_model(train_dataset: torch.utils.data.Dataset, val_dataset: torch.utils.data.Dataset, device: torch.device) -> None:
     """
     Train the LCF-ATEPC model on the given datasets.
     
     Args:
-        train_dataset: Dataset containing training examples
-        val_dataset: Dataset containing validation examples
+        train_dataset (torch.utils.data.Dataset): Dataset containing training examples
+        val_dataset (torch.utils.data.Dataset): Dataset containing validation examples
+        device (torch.device): Device to run the training on
         
     Returns:
-        str: Path to the saved best model
+        None
     """
     logger.info(f"Training dataset size: {len(train_dataset)}")
     logger.info(f"Validation dataset size: {len(val_dataset)}")
@@ -1236,16 +1329,17 @@ def train_model(train_dataset, val_dataset):
     except Exception as e:
         logger.error(f"Error during training: {e}")
         raise
-    
-    return best_model_path
 
-def prepare_data_format(input_path, output_path):
+def prepare_data_format(input_path: str, output_path: str) -> None:
     """
     Prepare data in the required format for LCF-ATEPC.
     
     Args:
         input_path (str): Path to input CSV file
         output_path (str): Path to save the processed CSV file
+
+    Returns:
+        None
     """
     try:
         df = pd.read_csv(input_path)

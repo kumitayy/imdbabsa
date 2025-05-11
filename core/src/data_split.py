@@ -1,12 +1,17 @@
+# Standard library imports
 import os
 import sys
 import logging
-import pandas as pd
 from typing import Optional
+
+# Third-party imports
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
+# Local imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -53,7 +58,7 @@ def split_dataset(load_path: str, save_path: str, test_size: float = 0.2, val_si
 
         logger.info(f"Split complete. Train={len(train_df)} | Val={len(val_df)} | Test={len(test_df)}")
 
-        # Сохраняем данные
+        # Save data
         train_path = os.path.join(save_path, "train_data.csv")
         train_df.to_csv(train_path, index=False)
         logger.info(f"Data saved to {train_path}")

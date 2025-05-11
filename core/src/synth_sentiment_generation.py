@@ -1,28 +1,38 @@
-import os
-import sys
+# Standard library imports
 import json
 import logging
-from typing import Dict, List, Optional
+import os
+import sys
 import time
+from datetime import datetime
+from collections import Counter
+from typing import Dict, List, Optional
 
+# Third-party imports
+import pandas as pd
+import torch
+from tqdm import tqdm
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig
+)
+
+# Local imports
+from config.config import CONFIG
+
+# Configure paths and logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-import torch
-import pandas as pd
-from tqdm import tqdm
-from datetime import datetime
-from collections import Counter
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from config.config import CONFIG
-
+# Constants
 MODEL_NAME = "upstage/SOLAR-10.7B-Instruct-v1.0"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MAX_LENGTH = 1024
 BATCH_SIZE = 4
 
-# Конфигурация для 4-битного квантования
+# Configuration for 4-bit quantization
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
@@ -30,12 +40,20 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=True
 )
 
-# Глобальные переменные для модели и токенизатора
+# Global variables for model and tokenizer
 tokenizer = None
 model = None
 
 def load_model_if_needed():
-    """Загружает модель и токенизатор при необходимости."""
+    """
+    Loads the model and tokenizer if needed.
+    
+    Args:
+        None
+    
+    Returns:
+        Tuple[AutoTokenizer, AutoModelForCausalLM]: The loaded tokenizer and model.
+    """
     global tokenizer, model
     
     if tokenizer is None or model is None:
@@ -49,7 +67,7 @@ def load_model_if_needed():
         )
         logger.info("Model loaded successfully")
 
-        # Настройка токенизатора
+        # Configure tokenizer
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             tokenizer.padding_side = "left"
@@ -167,7 +185,7 @@ def batch_generate(prompts: List[str]) -> List[str]:
         List[str]: List of normalized sentiments ("positive", "negative", or "neutral").
     """
     try:
-        # Загружаем модель при первом использовании
+        # Load model when first used
         tokenizer, model = load_model_if_needed()
         
         inputs = tokenizer(
@@ -289,10 +307,10 @@ def generate_synthetic_data(max_samples_per_split: Optional[Dict[str, int]] = {"
         last_logged_percentage = 0
         start_time = time.time()
         
-        # Calculate size of 10% for progress updates
-        ten_percent = total_pairs // 10
-        if ten_percent == 0:  # Handle very small datasets
-            ten_percent = 1
+        # Calculate size of 5% for progress updates
+        five_percent = total_pairs // 20
+        if five_percent == 0:  # Handle very small datasets
+            five_percent = 1
         
         for i in range(0, total_pairs, BATCH_SIZE):
             batch = pairs_df.iloc[i:i+BATCH_SIZE]
@@ -320,8 +338,8 @@ def generate_synthetic_data(max_samples_per_split: Optional[Dict[str, int]] = {"
             # Update progress counter
             processed_pairs += len(batch)
             
-            # Only log at 10% intervals
-            current_percentage = (processed_pairs * 10) // total_pairs * 10  # Round to nearest 10%
+            # Only log at 5% intervals
+            current_percentage = (processed_pairs * 5) // total_pairs * 5  # Round to nearest 5%
             if current_percentage > last_logged_percentage:
                 elapsed = time.time() - start_time
                 rate = processed_pairs / elapsed if elapsed > 0 else 0
@@ -410,9 +428,3 @@ def balance_classes(df: pd.DataFrame) -> pd.DataFrame:
     
     balanced_df = pd.concat(balanced_samples).reset_index(drop=True)
     return balanced_df
-
-
-if __name__ == "__main__":
-    logger.info("Starting synthetic sentiment generation with SOLAR-10.7B-Instruct-v1.0")
-    generate_synthetic_data()
-    logger.info("Sentiment generation complete")

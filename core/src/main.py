@@ -1,8 +1,12 @@
+# Standard library imports
+import logging
 import os
 import sys
-import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict
+
+# Local imports
+from config.config import CONFIG
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -10,9 +14,6 @@ logger = logging.getLogger(__name__)
 
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import config only
-from config.config import CONFIG
 
 
 def phase1() -> None:
@@ -181,9 +182,9 @@ def phase4() -> None:
     logger.info("Phase 4 complete: Aspects processed successfully.")
 
 
-def phase7() -> None:
+def phase5() -> None:
     """
-    Phase 7: Generation of synthetic sentiments using SOLAR-10.7B-Instruct-v1.0 with neutral class filtering.
+    Phase 5: Generation of synthetic sentiments using SOLAR-10.7B-Instruct-v1.0 with neutral class filtering.
     
     This function:
     1. Uses pre-processed aspect data from previous phases
@@ -201,26 +202,26 @@ def phase7() -> None:
         RuntimeError: If there is an issue with the model.
         Exception: If there is an error generating sentiments.
     """
-    logger.info("Phase 7: Starting the synthetic sentiment generation pipeline with SOLAR-10.7B-Instruct-v1.0...")
+    logger.info("Phase 5: Starting the synthetic sentiment generation pipeline with SOLAR-10.7B-Instruct-v1.0...")
 
     # Local import to prevent parallel loading conflicts
     from synth_sentiment_generation import generate_synthetic_data
 
     # Low number of samples for testing
     max_samples = {
-        "train": 2000, # Change to 10000 for full dataset
-        "val": 200, # Change to 2000 for full dataset
-        "test": 200 # Change to 2000 for full dataset
+        "train": 20000, # Change to 10000 for full dataset
+        "val": 2000, # Change to 2000 for full dataset
+        "test": 2000 # Change to 2000 for full dataset
     }
 
     generate_synthetic_data(max_samples_per_split=max_samples)
     
-    logger.info("Phase 7 complete: Aspect sentiments successfully generated with SOLAR-10.7B-Instruct-v1.0 model including neutral filtering.")
+    logger.info("Phase 5 complete: Aspect sentiments successfully generated with SOLAR-10.7B-Instruct-v1.0 model including neutral filtering.")
 
 
-def phase8() -> Dict[str, Dict[str, Any]]:
+def phase6() -> Dict[str, Dict[str, Any]]:
     """
-    Phase 8: Balance classes in filtered synthetic data.
+    Phase 6: Balance classes in filtered synthetic data.
     
     This function:
     1. Loads filtered synthetic data for each split (train/val/test) 
@@ -239,7 +240,7 @@ def phase8() -> Dict[str, Dict[str, Any]]:
     import pandas as pd
     from balance_classes import process_and_balance_dataset
     
-    logger.info("Phase 8: Starting class balancing for filtered sentiment data...")
+    logger.info("Phase 6: Starting class balancing for filtered sentiment data...")
     
     splits = ['train', 'val', 'test']
     stats = {}
@@ -263,13 +264,13 @@ def phase8() -> Dict[str, Dict[str, Any]]:
         logger.info(f"Initial distribution: {split_stats['initial_distribution']}")
         logger.info(f"Final distribution: {split_stats['final_distribution']}")
     
-    logger.info("Phase 8 complete: Classes balanced and saved.")
+    logger.info("Phase 6 complete: Classes balanced and saved.")
     return stats
 
 
-def phase9() -> None:
+def phase7() -> None:
     """
-    Phase 9: Prepare data and train LCF-ATEPC model for aspect-based sentiment analysis.
+    Phase 7: Prepare data and train LCF-ATEPC model for aspect-based sentiment analysis.
     
     This function:
     1. Prepares balanced data in format appropriate for LCF-ATEPC
@@ -293,7 +294,7 @@ def phase9() -> None:
     import pandas as pd
     from train_model import prepare_data_format, ABSADataset, train_model
     
-    logger.info("Phase 9: Starting LCF-ATEPC training pipeline for ABSA...")
+    logger.info("Phase 7: Starting LCF-ATEPC training pipeline for ABSA...")
     
     lcf_atepc_deployment_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "lcf_atepc")
     os.makedirs(lcf_atepc_deployment_path, exist_ok=True)
@@ -330,7 +331,7 @@ def phase9() -> None:
         logger.error(f"Error during model training: {e}")
         raise
     
-    logger.info(f"Phase 9 complete: LCF-ATEPC model trained, saved and prepared for deployment at {lcf_atepc_deployment_path}")
+    logger.info(f"Phase 7 complete: LCF-ATEPC model trained, saved and prepared for deployment at {lcf_atepc_deployment_path}")
     return model_path
 
 
@@ -357,10 +358,9 @@ if __name__ == '__main__':
         2: phase2,    # Remove duplicates
         3: phase3,    # Split dataset
         4: phase4,    # Process aspects
-        # Phases 5 and 6 are omitted (deprecated or not implemented)
-        # 7: phase7,    # Generate synthetic sentiments
-        # 8: phase8,    # Balance classes
-        # 9: phase9     # Train LCF-ATEPC model
+        5: phase5,    # Generate synthetic sentiments
+        6: phase6,    # Balance classes
+        7: phase7     # Train LCF-ATEPC model
     }
     
     if args.phase:
