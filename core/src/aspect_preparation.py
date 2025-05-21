@@ -3,7 +3,8 @@ import os
 import sys
 import logging
 import re
-from typing import List, Set, Optional, Counter
+import ast
+from typing import List, Set, Optional, Counter, Tuple, Dict
 
 # Third-party imports
 import torch
@@ -279,7 +280,45 @@ def merge_similar_aspects(aspect_lists: List[List[str]], similarity_threshold: f
     return merged_lists
 
 
-def extract_aspect_contexts_batch(reviews, all_aspects, use_gpu=True):
+def process_aspects(df: pd.DataFrame, aspect_column: str = "aspects", use_gpu: bool = True) -> pd.DataFrame:
+    """
+    Process aspects in the dataset through a series of filters and transformations.
+    
+    Args:
+        df (pd.DataFrame): DataFrame containing the data
+        aspect_column (str): Name of the column containing aspect lists
+        use_gpu (bool): Whether to use GPU for embedding calculations
+        
+    Returns:
+        pd.DataFrame: DataFrame with processed aspects
+        
+    Raises:
+        Exception: If there is an error during processing
+    """
+    logger.info("Processing aspects: started")
+    df = df.copy(deep=True)
+    df[aspect_column] = df[aspect_column].apply(ast.literal_eval)
+    
+    logger.info("Filtering aspects by frequency")
+    df["filtered_aspects"] = filter_aspects(df[aspect_column])
+    
+    logger.info("Filtering semantic noise")
+    df["semantic_filtered_aspects"] = filter_semantic_noise(df["filtered_aspects"])
+    
+    logger.info("Normalizing aspects")
+    df["normalized_aspects"] = normalize_aspects(df["semantic_filtered_aspects"], use_gpu=use_gpu)
+    
+    logger.info("Merging similar aspects")
+    df["final_aspects"] = merge_similar_aspects(df["normalized_aspects"], use_gpu=use_gpu)
+    
+    columns_to_keep = ["review", "sentiment", "final_aspects"]
+    df = df[[col for col in columns_to_keep if col in df.columns]]
+    
+    logger.info("Processing aspects: completed")
+    return df
+
+
+def extract_aspect_contexts_batch(reviews: List[str], all_aspects: List[List[str]], use_gpu: bool = True) -> Tuple[List[Dict], List[Dict]]:
     """
     Extract context sentences for each aspect in batches of reviews.
     
@@ -398,45 +437,6 @@ def extract_aspect_contexts_batch(reviews, all_aspects, use_gpu=True):
     
     logger.info("Context extraction completed")
     return contexts_batch, contrasts_batch
-
-
-def process_aspects(df: pd.DataFrame, aspect_column: str = "aspects", use_gpu: bool = True) -> pd.DataFrame:
-    """
-    Process aspects in the dataset through a series of filters and transformations.
-    
-    Args:
-        df (pd.DataFrame): DataFrame containing the data
-        aspect_column (str): Name of the column containing aspect lists
-        use_gpu (bool): Whether to use GPU for embedding calculations
-        
-    Returns:
-        pd.DataFrame: DataFrame with processed aspects
-        
-    Raises:
-        Exception: If there is an error during processing
-    """
-    logger.info("Processing aspects: started")
-    df = df.copy(deep=True)
-    df[aspect_column] = df[aspect_column].apply(eval)
-    
-    logger.info("Filtering aspects by frequency")
-    df["filtered_aspects"] = filter_aspects(df[aspect_column])
-    
-    logger.info("Filtering semantic noise")
-    df["semantic_filtered_aspects"] = filter_semantic_noise(df["filtered_aspects"])
-    
-    logger.info("Normalizing aspects")
-    df["normalized_aspects"] = normalize_aspects(df["semantic_filtered_aspects"], use_gpu=use_gpu)
-    
-    logger.info("Merging similar aspects")
-    df["final_aspects"] = merge_similar_aspects(df["normalized_aspects"], use_gpu=use_gpu)
-    
-    columns_to_keep = ["review", "sentiment", "final_aspects"]
-    df = df[[col for col in columns_to_keep if col in df.columns]]
-    
-    logger.info("Processing aspects: completed")
-    return df
-
 
 # ======= WHITELIST FILTERING FUNCTIONS ======= #
 

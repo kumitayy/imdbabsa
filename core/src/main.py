@@ -5,15 +5,15 @@ import sys
 import time
 from typing import Any, Dict
 
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Local imports
 from config.config import CONFIG
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-# Add project root to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def phase1() -> None:
@@ -356,11 +356,11 @@ if __name__ == '__main__':
     phases = {
         1: phase1,    # Load and preprocess IMDB dataset
         2: phase2,    # Remove duplicates
-        3: phase3,    # Split dataset
-        4: phase4,    # Process aspects
-        5: phase5,    # Generate synthetic sentiments
-        6: phase6,    # Balance classes
-        7: phase7     # Train LCF-ATEPC model
+        # 3: phase3,    # Split dataset
+        # 4: phase4,    # Process aspects
+        # 5: phase5,    # Generate synthetic sentiments
+        # 6: phase6,    # Balance classes
+        # 7: phase7     # Train LCF-ATEPC model
     }
     
     if args.phase:

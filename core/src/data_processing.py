@@ -247,30 +247,35 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     copy = df.copy()
     
     # Step 1: Remove duplicates
-    logger.info("Step 1/5: Removing duplicates...")
+    logger.info("Step 1/6: Removing duplicates...")
     copy = remove_duplicates(copy)
     processed_rows = len(copy)
     logger.info(f"Processing {processed_rows} unique rows")
     
     # Step 2: Expand contractions
-    logger.info("Step 2/5: Expanding contractions...")
+    logger.info("Step 2/6: Expanding contractions...")
     tqdm.pandas(desc="Expanding contractions")
     copy["review"] = copy["review"].progress_apply(expand_contractions)
     
     # Step 3: Handle negations
-    logger.info("Step 3/5: Handling negations...")
+    logger.info("Step 3/6: Handling negations...")
     tqdm.pandas(desc="Handling negations")
     copy["review"] = copy["review"].progress_apply(handle_negations)
     
     # Step 4: Clean text
-    logger.info("Step 4/5: Cleaning text...")
+    logger.info("Step 4/6: Cleaning text...")
     tqdm.pandas(desc="Cleaning text")
     copy["review"] = copy["review"].progress_apply(clean_text)
     
     # Step 5: Extract aspects
-    logger.info("Step 5/5: Extracting aspects...")
+    logger.info("Step 5/6: Extracting aspects...")
     tqdm.pandas(desc="Extracting aspects")
     copy["aspects"] = copy["review"].progress_apply(extract_aspects)
+
+    # Step 6: Remove duplicates and empty rows
+    logger.info("Step 6/6: Removing duplicates and empty rows...")
+    copy = remove_duplicates(copy)
+    copy = copy[copy["review"].notna()]
 
     logger.info(f"Preprocessing complete for {copy.shape[0]} reviews")
     return copy
