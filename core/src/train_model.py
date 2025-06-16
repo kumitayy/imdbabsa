@@ -54,7 +54,7 @@ class LCF_ATEPC(nn.Module):
     """
     def __init__(self, pretrained_model_name: str = 'bert-base-uncased',
                  hidden_size: int = 768, num_aspect_labels: int = 2, num_sentiment_labels: int = 2,
-                 context_window: int = 3, dropout_rate: float = 0.15):
+                 context_window: int = 4, dropout_rate: float = 0.15):
         """
         Initialize the LCF_ATEPC model.
 

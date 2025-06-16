@@ -354,13 +354,13 @@ if __name__ == '__main__':
     
     # Mapping phases to corresponding functions
     phases = {
-        1: phase1,    # Load and preprocess IMDB dataset
-        2: phase2,    # Remove duplicates
+        # 1: phase1,    # Load and preprocess IMDB dataset
+        # 2: phase2,    # Remove duplicates
         # 3: phase3,    # Split dataset
         # 4: phase4,    # Process aspects
         # 5: phase5,    # Generate synthetic sentiments
         # 6: phase6,    # Balance classes
-        # 7: phase7     # Train LCF-ATEPC model
+        7: phase7     # Train LCF-ATEPC model
     }
     
     if args.phase:
