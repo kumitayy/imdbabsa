@@ -204,14 +204,12 @@ def phase5() -> None:
     """
     logger.info("Phase 5: Starting the synthetic sentiment generation pipeline with SOLAR-10.7B-Instruct-v1.0...")
 
-    # Local import to prevent parallel loading conflicts
     from synth_sentiment_generation import generate_synthetic_data
 
-    # Low number of samples for testing
     max_samples = {
-        "train": 20000, # Change to 10000 for full dataset
-        "val": 2000, # Change to 2000 for full dataset
-        "test": 2000 # Change to 2000 for full dataset
+        "train": 12000, 
+        "val": 2000, 
+        "test": 2000 
     }
 
     generate_synthetic_data(max_samples_per_split=max_samples)
@@ -323,16 +321,19 @@ def phase7() -> None:
     train_dataset = ABSADataset(train_df, augment=True)
     val_dataset = ABSADataset(val_df)
     
+    # Get device
+    import torch
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     # Train model
     try:
-        model_path = train_model(train_dataset, val_dataset)
-        logger.info(f"Model trained successfully and saved to {model_path}")
+        train_model(train_dataset, val_dataset, device=device)
+        logger.info(f"Model trained successfully and saved to {lcf_atepc_deployment_path}")
     except Exception as e:
         logger.error(f"Error during model training: {e}")
         raise
     
     logger.info(f"Phase 7 complete: LCF-ATEPC model trained, saved and prepared for deployment at {lcf_atepc_deployment_path}")
-    return model_path
 
 
 if __name__ == '__main__':
@@ -354,12 +355,12 @@ if __name__ == '__main__':
     
     # Mapping phases to corresponding functions
     phases = {
-        # 1: phase1,    # Load and preprocess IMDB dataset
-        # 2: phase2,    # Remove duplicates
-        # 3: phase3,    # Split dataset
-        # 4: phase4,    # Process aspects
-        # 5: phase5,    # Generate synthetic sentiments
-        # 6: phase6,    # Balance classes
+        1: phase1,    # Load and preprocess IMDB dataset
+        2: phase2,    # Remove duplicates
+        3: phase3,    # Split dataset
+        4: phase4,    # Process aspects
+        5: phase5,    # Generate synthetic sentiments
+        6: phase6,    # Balance classes
         7: phase7     # Train LCF-ATEPC model
     }
     

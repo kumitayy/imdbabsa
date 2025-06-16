@@ -20,6 +20,7 @@ from transformers import BertModel, BertTokenizer
 
 # Local imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.config import CONFIG
 
 # Configure logging
 logging.basicConfig(
@@ -533,10 +534,10 @@ class TelegramBot:
 
 if __name__ == "__main__":
     # Replace with your actual bot token from BotFather
-    BOT_TOKEN = "YOUR_BOT_TOKEN"
+    BOT_TOKEN = CONFIG["telegram_bot_token"] if CONFIG["telegram_bot_token"] else "YOUR_BOT_TOKEN"
     
     if BOT_TOKEN == "YOUR_BOT_TOKEN":
-        logger.warning("You are using a test token. Please replace 'YOUR_BOT_TOKEN' with an actual token from @BotFather.")
+        logger.warning("You are using a test token. Please replace 'YOUR_BOT_TOKEN' with an actual token from @BotFather. It should be in the .env file.")
     
     try:
         logger.info("Initializing Telegram bot with LCF-ATEPC model")

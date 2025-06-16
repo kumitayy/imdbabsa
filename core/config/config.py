@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 def get_project_root():
     """
@@ -20,18 +22,19 @@ CONFIG = {
     "unsupervised_path": os.path.join(PROJECT_ROOT, "core", "data", "processed", "unsupervised_data.csv"),
     "unprocessed_aspects_path": os.path.join(PROJECT_ROOT, "core", "data", "processed", "unprocessed_aspects"),
     "processed_aspects_path": os.path.join(PROJECT_ROOT, "core", "data", "processed", "processed_aspects"),
-    "model_save_path": os.path.join(PROJECT_ROOT, "core", "models", "roberta_absa"),
-    "pseudo_model_path": os.path.join(PROJECT_ROOT, "core", "models", "roberta_absa_pseudo"),
+    "roberta_save_path": os.path.join(PROJECT_ROOT, "core", "models", "roberta_absa"),
+    "pseudo_roberta_model_path": os.path.join(PROJECT_ROOT, "core", "models", "roberta_absa_pseudo"),
     "synthetic_sentiments_path": os.path.join(PROJECT_ROOT, "core", "data", "processed", "synthetic_sentiments"),
-    "aspect_clusters_path": os.path.join(PROJECT_ROOT, "core", "exploratory", "aspect_clusters_pca.csv"),
     "whitelist_path": os.path.join(PROJECT_ROOT, "core", "data", "whitelist.txt"),
     "useful_aspects_path": os.path.join(PROJECT_ROOT, "core", "data", "processed", "useful_aspects"),
     "roberta_final_path": os.path.join(PROJECT_ROOT, "core", "models", "roberta_absa_final"),
     "lcf_atepc_data_path": os.path.join(PROJECT_ROOT, "core", "data", "processed", "lcf_atepc_data"),
-    "lcf_atepc_output_path": os.path.join(PROJECT_ROOT, "core", "models", "lcf_atepc")
+    "lcf_atepc_output_path": os.path.join(PROJECT_ROOT, "core", "models", "lcf_atepc"),
+    "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN")
 }
 
 # Ensure directories exist
-for path in CONFIG.values():
-    if path.endswith(os.sep) or not os.path.splitext(path)[1]:  # Check if it's a directory path
+for key, path in CONFIG.items():
+    # Skip tokens and any non-path values
+    if "path" in key and (path.endswith(os.sep) or not os.path.splitext(path)[1]):
         os.makedirs(path, exist_ok=True)
