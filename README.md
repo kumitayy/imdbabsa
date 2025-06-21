@@ -1,127 +1,137 @@
-# IMDB Aspect-Based Sentiment Analysis (ABSA)
+# IMDB Aspect-Based Sentiment Analysis: LCF-ATEPC vs RoBERTa Comparison
 
-A project for aspect-based sentiment analysis of movie reviews from the IMDB database using various deep learning approaches.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-## Project Description
+> **Portfolio Project**: Demonstrating the superiority of LCF-ATEPC over RoBERTa in Aspect-Based Sentiment Analysis using synthetic data generation for model enhancement.
 
-This project develops and compares several models for the Aspect-Based Sentiment Analysis (ABSA) task on movie reviews. Unlike traditional sentiment analysis, ABSA allows determining sentiment polarity in relation to specific aspects mentioned in the text (e.g., "plot", "acting", "special effects", etc.)
+## 🎯 Project Objective
 
-### Main Features:
+This project demonstrates a **comparative analysis** between two deep learning approaches for Aspect-Based Sentiment Analysis (ABSA) on IMDB movie reviews:
 
-1. Loading and preprocessing IMDB data
-2. Extracting aspects from review texts
-3. Generating synthetic data for model training
-4. Training various models for the ABSA task:
-   - LCF-ATEPC (Local Context Focus model)
-   - RoBERTa-base
-   - RoBERTa with pseudo-labeling
-5. Evaluating and comparing models on test data
-6. Providing an interface for analyzing arbitrary texts
+- **LCF-ATEPC** (Local Context Focus - Aspect Term Extraction and Polarity Classification)
+- **RoBERTa-based** models
 
-## Project Structure
+The key innovation showcased is the use of **synthetic data generation** to improve model performance on datasets that were originally unsuitable for ABSA tasks.
 
+## 🚀 Key Findings & Demonstrations
+
+### 1. **Model Superiority**: LCF-ATEPC vs RoBERTa
+- LCF-ATEPC consistently outperforms RoBERTa variants in ABSA tasks
+- Better handling of local context around aspect terms
+- More accurate sentiment classification for specific aspects
+
+### 2. **Synthetic Data Enhancement**
+- Original IMDB dataset lacks aspect-level annotations
+- Synthetic sentiment generation bridges this gap
+- Demonstrates how unsuitable data can be transformed for specialized tasks
+
+### 3. **Comprehensive Evaluation**
+- Multiple metrics comparison (F1, Precision, Recall, Accuracy)
+- Analysis of challenging cases where aspect sentiment contradicts overall review sentiment
+- Performance evaluation on both synthetic and real test data
+
+## 📊 Results Overview
+
+All detailed results, visualizations, and model comparisons are available in:
+**`core/exploratory/model_comparison.ipynb`**
+
+This notebook contains:
+- Performance metrics comparison
+- Visualization of model strengths/weaknesses  
+- Analysis of synthetic vs. real data impact
+- Case studies of complex sentiment scenarios
+
+## 🛠 Technical Implementation
+
+### Architecture
 ```
 core/
-├── config/             # Project configuration files
-├── data/               # Datasets (raw and processed)
-│   ├── raw/            # Original IMDB data
-│   └── processed/      # Processed data
-├── exploratory/        # Research notebooks and scripts
-├── models/             # Trained models
-│   ├── lcf_atepc/      # LCF-ATEPC model
-│   ├── roberta_absa/   # Base RoBERTa model
-│   └── roberta_absa_final/ # Final RoBERTa model
-└── src/                # Source code
-    ├── aspect_preparation.py  # Aspect preparation
-    ├── balance_classes.py     # Class balancing
-    ├── bot_execution.py       # Telegram bot integration
-    ├── data_processing.py     # Data processing
-    ├── data_split.py          # Data splitting
-    ├── main.py               # Main project script
-    ├── synth_sentiment_generation.py # Synthetic data generation
-    └── train_model.py        # Model training
+├── config/                    # Configuration management
+│   ├── __init__.py
+│   └── config.py             # Main project configuration
+├── data/                     # Raw and processed datasets
+│   ├── raw/                  # Original IMDB data
+│   ├── processed/            # Transformed data for ABSA
+│   └── whitelist.txt         # Aspect filtering whitelist
+├── exploratory/              # 📈 Main results and analysis
+│   ├── model_comparison.ipynb # 🔍 CORE FINDINGS HERE
+│   └── EDA.ipynb             # Exploratory Data Analysis
+├── models/                   # Trained model artifacts
+│   ├── lcf_atepc/           # LCF-ATEPC model
+│   ├── roberta_absa/        # Base RoBERTa model
+│   ├── roberta_absa_pseudo/ # RoBERTa with pseudo-labeling
+│   └── model_comparison_results.csv # Model performance metrics
+└── src/                      # Implementation pipeline
+    ├── __init__.py
+    ├── main.py              # Pipeline orchestration
+    ├── data_processing.py   # Data preprocessing
+    ├── data_split.py        # Data splitting
+    ├── aspect_preparation.py # Aspect extraction
+    ├── synth_sentiment_generation.py # 🔑 Synthetic data creation
+    ├── balance_classes.py   # Class balancing
+    ├── train_model.py       # Model training
+    └── bot_execution.py     # Telegram bot integration
 ```
 
-## Installation and Running
+### Models Implemented
 
-### Prerequisites
+1. **LCF-ATEPC**: State-of-the-art ABSA model with local context focusing
+2. **RoBERTa Base**: Standard transformer approach adapted for ABSA
+3. **RoBERTa + Pseudo-labeling**: Enhanced with semi-supervised techniques
 
-- Python 3.8+
-- PyTorch 1.10+
-- Transformers 4.15+
-- Pandas, NumPy, Matplotlib, Scikit-learn
-- CUDA (optional, for accelerated training on GPU)
+## 🔧 Quick Start
 
-### Installing Dependencies
-
+### Installation
 ```bash
+git clone <repository-url>
+cd imdb-absa
 pip install -r requirements.txt
 ```
 
-### Running the Complete Processing and Training Pipeline
-
+### Run Complete Pipeline
 ```bash
-python -m core.src.main
+python -m core.src.main --all
 ```
 
-### Running Individual Phases
+### View Results
+Open `core/exploratory/model_comparison.ipynb` to see:
+- Performance comparisons
+- Model analysis
+- Key insights and conclusions
 
-```bash
-# Loading and preprocessing IMDB data
-python -m core.src.main --phase 1
+## 💡 Key Insights Demonstrated
 
-# Removing duplicates
-python -m core.src.main --phase 2
+1. **Specialized architectures matter**: LCF-ATEPC's local context mechanism provides significant advantages over general-purpose transformers for ABSA
+2. **Data transformation viability**: Synthetic data generation can successfully adapt unsuitable datasets for specialized tasks
+3. **Performance metrics**: Quantifiable improvements across multiple evaluation criteria
+4. **Real-world applicability**: Analysis of edge cases and challenging scenarios
 
-# Splitting data into training/test sets
-python -m core.src.main --phase 3
+## 🔬 Project Conclusions
 
-# Processing aspects
-python -m core.src.main --phase 4
+This research demonstrates three critical insights that extend beyond ABSA to general deep learning methodology:
 
-# Generating synthetic data
-python -m core.src.main --phase 7
+### 1. **Small LLMs with Quantization are Powerful Data Transformers**
+Even relatively small Language Models (LLMs) running with 4-bit quantization demonstrate **excellent results** in transforming data from completely unsuitable formats for ABSA tasks into highly suitable ones. This finding suggests that sophisticated data preprocessing using quantized models can democratize access to advanced NLP techniques without requiring massive computational resources.
 
-# Balancing classes
-python -m core.src.main --phase 8
+### 2. **Local Context Mechanisms Reduce Overconfidence**
+The **LCF-ATEPC model's local context focus mechanism** proves superior on challenging examples and shows significantly **less tendency toward overconfidence** compared to general transformers. This architectural advantage becomes particularly evident in edge cases where aspect sentiment contradicts overall review sentiment - precisely the scenarios where robust, reliable predictions matter most.
 
-# Training the LCF-ATEPC model
-python -m core.src.main --phase 9
-```
+### 3. **Two Pillars of Deep Learning Success**
+The project identifies two fundamental factors that had the **greatest impact on final model performance**:
+- **Appropriate data generation**: Transforming unsuitable data into task-appropriate format
+- **Suitable tool selection**: Choosing architectures with mechanisms aligned to the task (LCF for local context)
 
-### Model Comparison
+This reflects a **generalized approach to any deep learning task**: success depends equally on data quality/suitability and architectural alignment with the problem domain, rather than simply scaling model size or training time.
 
-To compare all trained models, run:
+## 🎓 Educational Value
 
-```bash
-python -m core.exploratory.model_comparison
-```
+This project demonstrates:
+- Advanced NLP model comparison methodologies
+- Synthetic data generation techniques
+- Comprehensive evaluation frameworks
+- Data transformation strategies for domain adaptation
 
-## Models
+## 📄 License
 
-### LCF-ATEPC
-
-A BERT-based model with a local context focus mechanism that considers the importance of words in the vicinity of the aspect. This model is optimized for the ABSA task with high sentiment determination accuracy.
-
-### RoBERTa-base
-
-A basic model based on the RoBERTa architecture, adapted for the ABSA task by combining text and aspect through a special [SEP] token.
-
-### RoBERTa with Pseudo-labeling
-
-An improved version of RoBERTa using pseudo-labeling technique to enrich training data.
-
-## Results
-
-Model comparison results are available in the `core/data/processed/` directory after running the model comparison script.
-
-## Future Development
-
-- Integration with a web interface for online analysis
-- Expanding the set of supported languages
-- Improving aspect extraction using neural network approaches
-- Optimizing models to increase inference speed
-
-## License
-
-MIT 
+MIT License - feel free to use this project as a reference for your own ABSA implementations. 

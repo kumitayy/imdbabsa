@@ -7,30 +7,31 @@ __pycache__/
 .venv/
 venv/
 ENV/
+env/
 
-# Data files (except raw data)
+# Data files (except raw data and whitelist)
 core/data/*
 !core/data/raw/
 !core/data/whitelist.txt
 
-# Model files
+# Model files (except roberta_absa and roberta_absa_pseudo)
 core/models/
-
-# Exploratory files
-core/exploratory/model_comparison.ipynb
-core/exploratory/model_comparison.py
+!core/models/roberta_absa
+!core/models/roberta_absa_pseudo
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
-
-# Logs
-*.log
-
 # IDE settings
 .idea/
-.vscode/ 
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+
+# Logs
+*.log 

@@ -81,55 +81,49 @@ def phase1() -> None:
     logger.info(f"Phase 1 complete: Raw IMDB data loaded, preprocessed, and saved. Total time: {total_duration:.2f} minutes")
 
 
+def main():
+    """
+    Главная функция для запуска проекта.
+    
+    Поддерживает запуск отдельных фаз через аргументы командной строки.
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='IMDB ABSA Pipeline')
+    parser.add_argument('--phase', type=int, default=None, 
+                       help='Номер фазы для запуска (1-9)')
+    parser.add_argument('--all', action='store_true',
+                       help='Запустить все фазы последовательно')
+    
+    args = parser.parse_args()
+    
+    if args.all:
+        logger.info("Запуск всех фаз...")
+        for phase_num in range(1, 10):
+            if phase_num == 5 or phase_num == 6:  # Пропускаем неопределенные фазы
+                continue
+            logger.info(f"Запуск фазы {phase_num}")
+            globals()[f'phase{phase_num}']()
+        logger.info("Все фазы завершены!")
+    elif args.phase:
+        phase_func = globals().get(f'phase{args.phase}')
+        if phase_func:
+            logger.info(f"Запуск фазы {args.phase}")
+            phase_func()
+        else:
+            logger.error(f"Фаза {args.phase} не найдена")
+    else:
+        logger.info("Запуск фазы 1 по умолчанию")
+        phase1()
+
+
+if __name__ == "__main__":
+    main()
+
+
 def phase2() -> None:
     """
-    Phase 2: Detect and remove duplicates in both supervised and unsupervised data.
-
-    This function:
-    1. Loads the cleaned supervised and unsupervised datasets
-    2. Detects duplicated rows and logs the count
-    3. Removes duplicates
-    4. Saves the cleaned versions back to disk
-    
-    Returns:
-        None
-        
-    Raises:
-        FileNotFoundError: If datasets do not exist.
-        Exception: If there is an error processing the data.
-    """
-    import pandas as pd
-    
-    logger.info("Phase 2: Checking and removing duplicates...")
-
-    supervised_df = pd.read_csv(CONFIG['supervised_path'])
-    logger.info(f"Loaded data from {CONFIG['supervised_path']} ({supervised_df.shape[0]} rows)")
-    
-    unsupervised_df = pd.read_csv(CONFIG['unsupervised_path'])
-    logger.info(f"Loaded data from {CONFIG['unsupervised_path']} ({unsupervised_df.shape[0]} rows)")
-
-    duplicates_count = supervised_df.duplicated().sum() + unsupervised_df.duplicated().sum()
-    logger.info(f"{duplicates_count} duplicates found")
-
-    supervised_df = supervised_df.drop_duplicates()
-    unsupervised_df = unsupervised_df.drop_duplicates()
-
-    logger.info(f"Supervised data shape: {supervised_df.shape}")
-    logger.info(f"Unsupervised data shape: {unsupervised_df.shape}")
-    logger.info(f"Total duplicates dropped: {duplicates_count}")
-
-    supervised_df.to_csv(CONFIG['supervised_path'], index=False)
-    logger.info(f"Data saved to {CONFIG['supervised_path']}")
-    
-    unsupervised_df.to_csv(CONFIG['unsupervised_path'], index=False)
-    logger.info(f"Data saved to {CONFIG['unsupervised_path']}")
-
-    logger.info("Phase 2 complete: Duplicates removed and cleaned data saved.")
-
-
-def phase3() -> None:
-    """
-    Phase 3: Split supervised dataset into train/validation/test sets.
+    Phase 2: Split supervised dataset into train/validation/test sets.
 
     This function:
     1. Loads the cleaned supervised dataset
@@ -146,18 +140,18 @@ def phase3() -> None:
     """
     from data_split import split_dataset
     
-    logger.info("Phase 3: Splitting supervised data into train/val/test...")
+    logger.info("Phase 2: Splitting supervised data into train/val/test...")
     split_dataset(
         load_path=CONFIG['supervised_path'],
         save_path=CONFIG["unprocessed_aspects_path"],
         stratify_col="sentiment"
     )
-    logger.info("Phase 3 complete: Supervised data split and saved.")
+    logger.info("Phase 2 complete: Supervised data split and saved.")
 
 
-def phase4() -> None:
+def phase3() -> None:
     """
-    Phase 4: Process extracted aspects for each review with comprehensive pipeline.
+    Phase 3: Process extracted aspects for each review with comprehensive pipeline.
 
     This function:
     1. Loads train/val/test datasets with raw extracted aspects
@@ -177,14 +171,14 @@ def phase4() -> None:
     """
     from aspect_preparation import run_aspect_preparation
     
-    logger.info("Phase 4: Starting aspect processing pipeline...")
+    logger.info("Phase 3: Starting aspect processing pipeline...")
     run_aspect_preparation()
-    logger.info("Phase 4 complete: Aspects processed successfully.")
+    logger.info("Phase 3 complete: Aspects processed successfully.")
 
 
-def phase5() -> None:
+def phase4() -> None:
     """
-    Phase 5: Generation of synthetic sentiments using SOLAR-10.7B-Instruct-v1.0 with neutral class filtering.
+    Phase 4: Generation of synthetic sentiments using SOLAR-10.7B-Instruct-v1.0 with neutral class filtering.
     
     This function:
     1. Uses pre-processed aspect data from previous phases
@@ -202,7 +196,7 @@ def phase5() -> None:
         RuntimeError: If there is an issue with the model.
         Exception: If there is an error generating sentiments.
     """
-    logger.info("Phase 5: Starting the synthetic sentiment generation pipeline with SOLAR-10.7B-Instruct-v1.0...")
+    logger.info("Phase 4: Starting the synthetic sentiment generation pipeline with SOLAR-10.7B-Instruct-v1.0...")
 
     from synth_sentiment_generation import generate_synthetic_data
 
@@ -214,12 +208,12 @@ def phase5() -> None:
 
     generate_synthetic_data(max_samples_per_split=max_samples)
     
-    logger.info("Phase 5 complete: Aspect sentiments successfully generated with SOLAR-10.7B-Instruct-v1.0 model including neutral filtering.")
+    logger.info("Phase 4 complete: Aspect sentiments successfully generated with SOLAR-10.7B-Instruct-v1.0 model including neutral filtering.")
 
 
-def phase6() -> Dict[str, Dict[str, Any]]:
+def phase5() -> Dict[str, Dict[str, Any]]:
     """
-    Phase 6: Balance classes in filtered synthetic data.
+    Phase 5: Balance classes in filtered synthetic data.
     
     This function:
     1. Loads filtered synthetic data for each split (train/val/test) 
@@ -238,7 +232,7 @@ def phase6() -> Dict[str, Dict[str, Any]]:
     import pandas as pd
     from balance_classes import process_and_balance_dataset
     
-    logger.info("Phase 6: Starting class balancing for filtered sentiment data...")
+    logger.info("Phase 5: Starting class balancing for filtered sentiment data...")
     
     splits = ['train', 'val', 'test']
     stats = {}
@@ -262,13 +256,13 @@ def phase6() -> Dict[str, Dict[str, Any]]:
         logger.info(f"Initial distribution: {split_stats['initial_distribution']}")
         logger.info(f"Final distribution: {split_stats['final_distribution']}")
     
-    logger.info("Phase 6 complete: Classes balanced and saved.")
+    logger.info("Phase 5 complete: Classes balanced and saved.")
     return stats
 
 
-def phase7() -> None:
+def phase6() -> None:
     """
-    Phase 7: Prepare data and train LCF-ATEPC model for aspect-based sentiment analysis.
+    Phase 6: Prepare data and train LCF-ATEPC model for aspect-based sentiment analysis.
     
     This function:
     1. Prepares balanced data in format appropriate for LCF-ATEPC
@@ -292,7 +286,7 @@ def phase7() -> None:
     import pandas as pd
     from train_model import prepare_data_format, ABSADataset, train_model
     
-    logger.info("Phase 7: Starting LCF-ATEPC training pipeline for ABSA...")
+    logger.info("Phase 6: Starting LCF-ATEPC training pipeline for ABSA...")
     
     lcf_atepc_deployment_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "lcf_atepc")
     os.makedirs(lcf_atepc_deployment_path, exist_ok=True)
@@ -333,7 +327,7 @@ def phase7() -> None:
         logger.error(f"Error during model training: {e}")
         raise
     
-    logger.info(f"Phase 7 complete: LCF-ATEPC model trained, saved and prepared for deployment at {lcf_atepc_deployment_path}")
+    logger.info(f"Phase 6 complete: LCF-ATEPC model trained, saved and prepared for deployment at {lcf_atepc_deployment_path}")
 
 
 if __name__ == '__main__':
@@ -356,12 +350,11 @@ if __name__ == '__main__':
     # Mapping phases to corresponding functions
     phases = {
         1: phase1,    # Load and preprocess IMDB dataset
-        2: phase2,    # Remove duplicates
-        3: phase3,    # Split dataset
-        4: phase4,    # Process aspects
-        5: phase5,    # Generate synthetic sentiments
-        6: phase6,    # Balance classes
-        7: phase7     # Train LCF-ATEPC model
+        2: phase2,    # Split dataset
+        3: phase3,    # Process aspects
+        4: phase4,    # Generate synthetic sentiments
+        5: phase5,    # Balance classes
+        6: phase6,    # Train LCF-ATEPC model
     }
     
     if args.phase:
@@ -374,7 +367,7 @@ if __name__ == '__main__':
             logger.error(f"Phase {args.phase} not found. Available phases: {', '.join(map(str, sorted(phases.keys())))}")
     else:
         # Running all phases sequentially
-        logger.info("Starting full IMDB ABSA pipeline...")
+        logger.info("Starting IMDB ABSA pipeline...")
         
         # Executing phases in the correct order
         for phase_num in sorted(phases.keys()):
