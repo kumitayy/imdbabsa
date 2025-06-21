@@ -1,0 +1,33 @@
+# CPU-only version (for systems without CUDA)
+# Core libraries
+numpy==1.26.4
+pandas==2.2.3
+matplotlib==3.10.0
+scikit-learn==1.6.1
+tqdm==4.67.1
+
+# Text processing
+nltk>=3.8.0
+spacy>=3.6.0
+transformers==4.49.0
+sentence-transformers>=2.2.2
+contractions>=0.1.73
+
+# Deep learning - CPU only
+torch==2.6.0+cpu
+torchvision==0.21.0+cpu
+torchaudio==2.6.0+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Visualization
+seaborn==0.13.2
+plotly==6.0.1
+wordcloud==1.9.4
+jupyter==1.1.1
+notebook==7.4.2
+
+# Utilities
+python-telegram-bot==22.0
+python-dotenv==1.1.0
+
+# SpaCy model (install manually: python -m spacy download en_core_web_sm) 

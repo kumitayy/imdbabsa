@@ -1,0 +1,26 @@
+# Minimal requirements for testing installation issues
+# Install in order: basic -> pytorch -> ml -> optional
+
+# === BASIC PACKAGES (should install without issues) ===
+numpy==1.26.4
+pandas==2.2.3
+tqdm==4.67.1
+
+# === PYTORCH (common issue point) ===
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch==2.6.0
+
+# === ESSENTIAL ML ===
+scikit-learn==1.6.1
+transformers==4.49.0
+
+# === OPTIONAL (install last) ===
+# matplotlib==3.10.0
+# seaborn==0.13.2
+# plotly==6.0.1
+# jupyter==1.1.1
+# notebook==7.4.2
+# accelerate==1.5.2
+# bitsandbytes==0.45.5
+# sentence-transformers>=2.2.2
+# python-telegram-bot==22.0 
