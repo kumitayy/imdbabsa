@@ -96,7 +96,8 @@ def load_imdb_data(base_path: str) -> pd.DataFrame:
 
 def remove_duplicates(df: pd.DataFrame) -> Optional[pd.DataFrame]:
     """
-    Removes duplicates from the DataFrame.
+    Safely removes duplicates from the DataFrame. For DataFrames containing list columns,
+    duplicates are identified based on non-list columns only to avoid hashing issues.
     
     Args:
         df (pd.DataFrame): The DataFrame to remove duplicates from
@@ -109,11 +110,46 @@ def remove_duplicates(df: pd.DataFrame) -> Optional[pd.DataFrame]:
     """
     try:
         initial_rows = df.shape[0]
-        df = df.drop_duplicates()
-        removed = initial_rows - df.shape[0]
+        
+        # Identify columns that contain lists
+        list_columns = []
+        non_list_columns = []
+        
+        for col in df.columns:
+            # Check if any cell in the column contains a list
+            has_lists = df[col].apply(lambda x: isinstance(x, list)).any()
+            if has_lists:
+                list_columns.append(col)
+            else:
+                non_list_columns.append(col)
+        
+        # Remove duplicates based on strategy
+        if list_columns and non_list_columns:
+            # If we have both list and non-list columns, use only non-list columns for duplicate detection
+            logger.info(f"Detected list columns: {list_columns}. Using subset {non_list_columns} for duplicate removal.")
+            result_df = df.drop_duplicates(subset=non_list_columns, keep='first')
+        elif list_columns and not non_list_columns:
+            # If all columns contain lists, convert to string representation temporarily
+            logger.info("All columns contain lists. Converting to string representation for duplicate removal.")
+            df_temp = df.copy().reset_index(drop=True)
+            for col in list_columns:
+                df_temp[col] = df_temp[col].apply(
+                    lambda x: '|'.join(sorted(x)) if isinstance(x, list) and x else ''
+                )
+            
+            # Get unique indices
+            unique_indices = df_temp.drop_duplicates().index
+            result_df = df.iloc[unique_indices].copy()
+        else:
+            # No list columns, standard duplicate removal
+            result_df = df.drop_duplicates(keep='first')
+        
+        removed = initial_rows - result_df.shape[0]
         if removed > 0:
             logger.info(f"Removed {removed} duplicate rows")
-        return df
+        
+        return result_df.reset_index(drop=True)
+    
     except Exception as e:
         logger.error(f"Error removing duplicates: {e}")
         return None
@@ -222,7 +258,7 @@ def extract_aspects(text: str) -> List[str]:
         return []
 
 
-def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
+def preprocess_data(df: pd.DataFrame) -> Optional[pd.DataFrame]:
     """
     Preprocesses the data by applying multiple text processing steps.
     
@@ -232,50 +268,89 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     3. Handling negations
     4. Cleaning text
     5. Extracting aspects
+    6. Final cleanup (removing duplicates and empty rows)
     
     Args:
         df (pd.DataFrame): The DataFrame to preprocess
         
     Returns:
-        pd.DataFrame: The preprocessed DataFrame
+        Optional[pd.DataFrame]: The preprocessed DataFrame or None if an error occurs
         
     Raises:
         Exception: If there is an error during preprocessing
     """
     logger.info("Preprocessing data...")
+    
+    if df is None or df.empty:
+        logger.error("Input DataFrame is None or empty")
+        return None
+        
     total_rows = len(df)
     copy = df.copy()
     
     # Step 1: Remove duplicates
     logger.info("Step 1/6: Removing duplicates...")
     copy = remove_duplicates(copy)
+    if copy is None:
+        logger.error("Failed to remove duplicates in step 1")
+        return None
     processed_rows = len(copy)
     logger.info(f"Processing {processed_rows} unique rows")
     
     # Step 2: Expand contractions
     logger.info("Step 2/6: Expanding contractions...")
-    tqdm.pandas(desc="Expanding contractions")
-    copy["review"] = copy["review"].progress_apply(expand_contractions)
+    try:
+        tqdm.pandas(desc="Expanding contractions")
+        copy["review"] = copy["review"].progress_apply(expand_contractions)
+    except Exception as e:
+        logger.error(f"Error expanding contractions: {e}")
+        return None
     
     # Step 3: Handle negations
     logger.info("Step 3/6: Handling negations...")
-    tqdm.pandas(desc="Handling negations")
-    copy["review"] = copy["review"].progress_apply(handle_negations)
+    try:
+        tqdm.pandas(desc="Handling negations")
+        copy["review"] = copy["review"].progress_apply(handle_negations)
+    except Exception as e:
+        logger.error(f"Error handling negations: {e}")
+        return None
     
     # Step 4: Clean text
     logger.info("Step 4/6: Cleaning text...")
-    tqdm.pandas(desc="Cleaning text")
-    copy["review"] = copy["review"].progress_apply(clean_text)
+    try:
+        tqdm.pandas(desc="Cleaning text")
+        copy["review"] = copy["review"].progress_apply(clean_text)
+    except Exception as e:
+        logger.error(f"Error cleaning text: {e}")
+        return None
     
     # Step 5: Extract aspects
     logger.info("Step 5/6: Extracting aspects...")
-    tqdm.pandas(desc="Extracting aspects")
-    copy["aspects"] = copy["review"].progress_apply(extract_aspects)
+    try:
+        tqdm.pandas(desc="Extracting aspects")
+        copy["aspects"] = copy["review"].progress_apply(extract_aspects)
+    except Exception as e:
+        logger.error(f"Error extracting aspects: {e}")
+        return None
 
-    # Step 6: Remove duplicates and empty rows
+    # Step 6: Final cleanup - remove duplicates (now with aspects column) and empty rows
     logger.info("Step 6/6: Removing duplicates and empty rows...")
-    copy = remove_duplicates(copy)
-    copy = copy[copy["review"].notna()]
+    try:
+        copy = remove_duplicates(copy)
+        if copy is None:
+            logger.error("Failed to remove duplicates in step 6")
+            return None
+            
+        # Remove rows with empty reviews
+        initial_count = len(copy)
+        copy = copy[copy["review"].notna() & (copy["review"].str.strip() != "")]
+        empty_removed = initial_count - len(copy)
+        if empty_removed > 0:
+            logger.info(f"Removed {empty_removed} rows with empty reviews")
+            
+    except Exception as e:
+        logger.error(f"Error in final cleanup: {e}")
+        return None
 
     logger.info(f"Preprocessing complete for {copy.shape[0]} reviews")
     return copy

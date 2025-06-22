@@ -1,35 +1,37 @@
-# Core libraries - UPDATED
+# Minimal requirements for testing installation issues
+# Install in order: basic -> pytorch -> ml -> optional
+
+# === BASIC PACKAGES (should install without issues) ===
 numpy==1.26.4
 pandas==2.2.3
-matplotlib==3.10.0
-scikit-learn==1.6.1
 tqdm==4.67.1
 
-# Text processing - KEEP EXACT VERSIONS (critically tuned)
-nltk>=3.8.0
-spacy>=3.6.0
-transformers==4.49.0
-sentence-transformers>=2.2.2
-contractions>=0.1.73
-
-# Deep learning with CUDA support - KEEP EXACT VERSIONS (critically tuned)
---find-links https://download.pytorch.org/whl/cu118/torch_stable.html
+# === PYTORCH (common issue point) ===
+--extra-index-url https://download.pytorch.org/whl/cu118
 torch==2.6.0
 torchvision==0.21.0
 torchaudio==2.6.0
-accelerate==1.5.2
-bitsandbytes==0.45.5
 
-# Visualization (for Jupyter notebooks)
+# === ESSENTIAL ML ===
+scikit-learn==1.6.1
+transformers==4.49.0
+
+# === OTHER LIBRARIES (install last) ===
+matplotlib==3.10.0
 seaborn==0.13.2
 plotly==6.0.1
 wordcloud==1.9.4
 jupyter==1.1.1
 notebook==7.4.2
-
-# Utilities
+accelerate==1.5.2
+bitsandbytes==0.45.5
+sentence-transformers>=2.2.2
 python-telegram-bot==22.0
+dotenv==0.9.9
 python-dotenv==1.1.0
+spacy==3.8.7
+nltk==3.9.1
+contractions==0.1.73
 
 # For SpaCy
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl 

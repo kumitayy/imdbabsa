@@ -81,46 +81,6 @@ def phase1() -> None:
     logger.info(f"Phase 1 complete: Raw IMDB data loaded, preprocessed, and saved. Total time: {total_duration:.2f} minutes")
 
 
-def main():
-    """
-    Главная функция для запуска проекта.
-    
-    Поддерживает запуск отдельных фаз через аргументы командной строки.
-    """
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='IMDB ABSA Pipeline')
-    parser.add_argument('--phase', type=int, default=None, 
-                       help='Номер фазы для запуска (1-9)')
-    parser.add_argument('--all', action='store_true',
-                       help='Запустить все фазы последовательно')
-    
-    args = parser.parse_args()
-    
-    if args.all:
-        logger.info("Запуск всех фаз...")
-        for phase_num in range(1, 10):
-            if phase_num == 5 or phase_num == 6:  # Пропускаем неопределенные фазы
-                continue
-            logger.info(f"Запуск фазы {phase_num}")
-            globals()[f'phase{phase_num}']()
-        logger.info("Все фазы завершены!")
-    elif args.phase:
-        phase_func = globals().get(f'phase{args.phase}')
-        if phase_func:
-            logger.info(f"Запуск фазы {args.phase}")
-            phase_func()
-        else:
-            logger.error(f"Фаза {args.phase} не найдена")
-    else:
-        logger.info("Запуск фазы 1 по умолчанию")
-        phase1()
-
-
-if __name__ == "__main__":
-    main()
-
-
 def phase2() -> None:
     """
     Phase 2: Split supervised dataset into train/validation/test sets.
@@ -201,9 +161,9 @@ def phase4() -> None:
     from synth_sentiment_generation import generate_synthetic_data
 
     max_samples = {
-        "train": 12000, 
-        "val": 2000, 
-        "test": 2000 
+        "train": 200, 
+        "val": 20, 
+        "test": 20 
     }
 
     generate_synthetic_data(max_samples_per_split=max_samples)
