@@ -1,5 +1,5 @@
 # Minimal requirements for testing installation issues
-# Install in order: basic -> pytorch -> ml -> optional
+# Install in order: basic -> pytorch -> ml -> other
 
 # === BASIC PACKAGES (should install without issues) ===
 numpy==1.26.4
