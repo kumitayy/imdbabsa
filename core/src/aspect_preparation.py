@@ -46,6 +46,7 @@ else:
 # Load models
 bert_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Reduce SpaCy model size for speed - we only need sentence segmentation
+spacy.cli.download("en_core_web_sm")
 nlp = spacy.load("en_core_web_sm", disable=["ner", "tagger", "lemmatizer", "attribute_ruler"])
 
 class DummyFile:
