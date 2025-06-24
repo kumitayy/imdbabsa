@@ -2,15 +2,15 @@
 # Install in order: basic -> pytorch -> ml -> other
 
 # === BASIC PACKAGES (should install without issues) ===
-numpy==1.26.4
+numpy>=1.26.4
 pandas==2.2.3
 tqdm==4.67.1
 
 # === PYTORCH (common issue point) ===
 --extra-index-url https://download.pytorch.org/whl/cu118
-torch==2.6.0
-torchvision==0.21.0
-torchaudio==2.6.0
+torch==2.6.0+cu118
+torchvision==0.21.0+cu118
+torchaudio==2.6.0+cu118
 
 # === ESSENTIAL ML ===
 scikit-learn==1.6.1
@@ -29,9 +29,6 @@ sentence-transformers>=2.2.2
 python-telegram-bot==22.0
 dotenv==0.9.9
 python-dotenv==1.1.0
-spacy==3.8.7
+spacy>=3.8.7
 nltk==3.9.1
 contractions==0.1.73
-
-# For SpaCy
-en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl 

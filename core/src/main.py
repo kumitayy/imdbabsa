@@ -161,9 +161,9 @@ def phase4() -> None:
     from synth_sentiment_generation import generate_synthetic_data
 
     max_samples = {
-        "train": 200, 
-        "val": 20, 
-        "test": 20 
+        "train": 12000, 
+        "val": 2000, 
+        "test": 2000 
     }
 
     generate_synthetic_data(max_samples_per_split=max_samples)
